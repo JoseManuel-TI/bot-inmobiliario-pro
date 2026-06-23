@@ -14,7 +14,17 @@ def esta_disponible(scraper, url):
     try:
         response = scraper.get(url, timeout=20, allow_redirects=True)
         # Zonaprop usa 410 para avisos caídos/no disponibles.
-        return response.status_code != 410
+        # También verificamos si redirige a la home de búsqueda o si el contenido indica que no está disponible
+        if response.status_code == 410 or "not-found" in response.url or "/departamentos-alquiler" in response.url:
+            return False
+        
+        # Validación de contenido (por si Zonaprop devuelve un 200 pero con cartel de finalizado)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        texto_pagina = soup.get_text().lower()
+        if "finalizado" in texto_pagina or "ya no está disponible" in texto_pagina or "aviso pausado" in texto_pagina:
+            return False
+            
+        return True
     except Exception:
         return False
 
