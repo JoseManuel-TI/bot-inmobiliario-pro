@@ -57,9 +57,9 @@ def index():
         print(f"Error leyendo JSON: {e}")
 
     # --- Lógica de Marketing ---
-    # Mostramos solo las primeras 4 en la web para mantener el diseño limpio
+    # Mostramos solo las primeras 2 en la web para mantener el diseño limpio
     # y que el usuario sienta que hay mucho más contenido en el reporte full.
-    datos_web = datos[:4] 
+    datos_web = datos[:2] 
 
     return render_template('index.html', propiedades=datos_web)
 
