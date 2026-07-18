@@ -1,4 +1,9 @@
-import cloudscraper
+try:
+    import cloudscraper
+except ImportError:
+    cloudscraper = None
+
+import requests
 import pandas as pd
 import json
 from bs4 import BeautifulSoup
@@ -8,6 +13,25 @@ from urllib.parse import urlsplit, urlunsplit
 def limpiar_link(url):
     parsed = urlsplit(url)
     return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, '', ''))
+
+
+def create_scraper():
+    if cloudscraper is not None:
+        return cloudscraper.create_scraper(
+            browser={
+                'browser': 'chrome',
+                'platform': 'windows',
+                'desktop': True
+            }
+        )
+
+    print('⚠️ cloudscraper no está disponible. Usando requests como respaldo.')
+    session = requests.Session()
+    session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'es-AR,es;q=0.9,en;q=0.8',
+    })
+    return session
 
 
 def esta_disponible(scraper, url):
@@ -29,14 +53,8 @@ def esta_disponible(scraper, url):
         return False
 
 def hacer_scraping():
-    # Configuración del "disfraz" para saltar bloqueos
-    scraper = cloudscraper.create_scraper(
-        browser={
-            'browser': 'chrome',
-            'platform': 'windows',
-            'desktop': True
-        }
-    )
+    # Configuración del "disfraz" para saltar bloqueos o usar requests si cloudscraper no está instalado
+    scraper = create_scraper()
     
     url = "https://www.zonaprop.com.ar/departamentos-alquiler-capital-federal-dueno-directo-orden-publicado-descendente.html"
     
