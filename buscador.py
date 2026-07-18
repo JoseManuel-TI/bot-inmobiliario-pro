@@ -15,6 +15,11 @@ def limpiar_link(url):
     return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, '', ''))
 
 
+def es_fuera_de_capital(ubicacion):
+    texto = ubicacion.lower()
+    return all(keyword not in texto for keyword in ['capital federal', 'caba', 'ciudad autónoma'])
+
+
 def create_scraper():
     if cloudscraper is not None:
         return cloudscraper.create_scraper(
@@ -56,40 +61,56 @@ def hacer_scraping():
     # Configuración del "disfraz" para saltar bloqueos o usar requests si cloudscraper no está instalado
     scraper = create_scraper()
     
-    url = "https://www.zonaprop.com.ar/departamentos-alquiler-capital-federal-dueno-directo-orden-publicado-descendente.html"
-    
     print("🚀 Iniciando búsqueda de oportunidades reales...")
     
     resultados = []
 
-    try:
-        response = scraper.get(url, timeout=30)
-        if response.status_code == 200:
+    search_targets = [
+        ("Capital Federal", "https://www.zonaprop.com.ar/departamentos-alquiler-capital-federal-dueno-directo-orden-publicado-descendente.html"),
+        ("Fuera de Capital", "https://www.zonaprop.com.ar/departamentos-alquiler.html")
+    ]
+    seen_links = set()
+
+    for target_name, target_url in search_targets:
+        print(f"🔎 Buscando {target_name}...")
+        try:
+            response = scraper.get(target_url, timeout=30)
+            if response.status_code != 200:
+                print(f"⚠️ No se pudo acceder a {target_name}: {response.status_code}")
+                continue
+
             soup = BeautifulSoup(response.text, 'html.parser')
             propiedades = soup.find_all('div', {'data-qa': 'posting PROPERTY'})
-            
+
             for prop in propiedades:
                 try:
                     enlace = prop.find('a', href=True)
                     if not enlace or '/propiedades/' not in enlace['href']:
                         continue
-                        
+
                     link_final = limpiar_link("https://www.zonaprop.com.ar" + enlace['href'])
+                    if link_final in seen_links:
+                        continue
+                    seen_links.add(link_final)
+
                     precio = prop.find(attrs={"data-qa": "POSTING_CARD_PRICE"}).text.strip()
                     ubicacion = prop.find(attrs={"data-qa": "POSTING_CARD_LOCATION"}).text.strip()
                     titulo = prop.find('h3').text.strip()
 
+                    if target_name == "Fuera de Capital" and not es_fuera_de_capital(ubicacion):
+                        continue
+
                     resultados.append({
+                        "Zona": target_name,
                         "Barrio": ubicacion,
                         "Precio": precio,
                         "Descripcion": titulo,
                         "Link": link_final
                     })
-                except:
+                except Exception:
                     continue
-            
-    except Exception as e:
-        print(f"❌ Error en la conexión: {e}")
+        except Exception as e:
+            print(f"❌ Error en la conexión de {target_name}: {e}")
 
     # --- PROCESAMIENTO Y LIMPIEZA ---
     if resultados:
